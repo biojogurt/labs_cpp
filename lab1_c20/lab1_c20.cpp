@@ -144,7 +144,6 @@ std::list<int> get_numbers_from_file(std::wfstream &file)
 std::list<double> modify(std::list<int> &numbers)
 {
     std::list<double> modified_numbers;
-
     double average = numbers_average(numbers);
     int positive_count = 0;
 
@@ -154,21 +153,14 @@ std::list<double> modify(std::list<int> &numbers)
     return modified_numbers;
 }
 
-std::list<double> modify(std::list<int> &numbers, std::list<int>::iterator begin, std::list<int>::iterator end)
+std::list<double> modify(std::list<int>::iterator begin, std::list<int>::iterator end)
 {
     std::list<double> modified_numbers;
-
-    for (std::list<int>::iterator i = numbers.begin(); i != begin; i++)
-        modified_numbers.push_back(*i);
-
-    double average = numbers_average(numbers);
+    double average = numbers_average(begin, end);
     int positive_count = 0;
 
     for (std::list<int>::iterator i = begin; i != end; i++)
         modified_numbers.push_back(choose_modified_number(*i, average, positive_count));
-
-    for (std::list<int>::iterator i = end; i != numbers.end(); i++)
-        modified_numbers.push_back(*i);
 
     return modified_numbers;
 }
@@ -176,7 +168,6 @@ std::list<double> modify(std::list<int> &numbers, std::list<int>::iterator begin
 std::list<double> modify_transform(std::list<int> &numbers)
 {
     std::list<double> modified_numbers;
-
     double average = numbers_average(numbers);
     int positive_count = 0;
 
@@ -186,21 +177,14 @@ std::list<double> modify_transform(std::list<int> &numbers)
     return modified_numbers;
 }
 
-std::list<double> modify_transform(std::list<int> &numbers, std::list<int>::iterator begin, std::list<int>::iterator end)
+std::list<double> modify_transform(std::list<int>::iterator begin, std::list<int>::iterator end)
 {
     std::list<double> modified_numbers;
-
-    std::transform(numbers.begin(), begin, std::back_inserter(modified_numbers), [](int number)
-                   { return number; });
-
-    double average = numbers_average(numbers);
+    double average = numbers_average(begin, end);
     int positive_count = 0;
 
     std::transform(begin, end, std::back_inserter(modified_numbers), [average, &positive_count](int number)
                    { return choose_modified_number(number, average, positive_count); });
-
-    std::transform(end, numbers.end(), std::back_inserter(modified_numbers), [](int number)
-                   { return number; });
 
     return modified_numbers;
 }
@@ -208,7 +192,6 @@ std::list<double> modify_transform(std::list<int> &numbers, std::list<int>::iter
 std::list<double> modify_for_each(std::list<int> &numbers)
 {
     std::list<double> modified_numbers;
-
     double average = numbers_average(numbers);
     int positive_count = 0;
 
@@ -218,21 +201,14 @@ std::list<double> modify_for_each(std::list<int> &numbers)
     return modified_numbers;
 }
 
-std::list<double> modify_for_each(std::list<int> &numbers, std::list<int>::iterator begin, std::list<int>::iterator end)
+std::list<double> modify_for_each(std::list<int>::iterator begin, std::list<int>::iterator end)
 {
     std::list<double> modified_numbers;
-
-    std::for_each(numbers.begin(), begin, [&modified_numbers](int number)
-                  { modified_numbers.push_back(number); });
-
-    double average = numbers_average(numbers);
+    double average = numbers_average(begin, end);
     int positive_count = 0;
 
     std::for_each(begin, end, [average, &positive_count, &modified_numbers](int number)
                   { modified_numbers.push_back(choose_modified_number(number, average, positive_count)); });
-
-    std::for_each(end, numbers.end(), [&modified_numbers](int number)
-                  { modified_numbers.push_back(number); });
 
     return modified_numbers;
 }
@@ -247,9 +223,24 @@ int numbers_sum(const std::list<int> &numbers)
     return sum;
 }
 
+int numbers_sum(std::list<int>::iterator begin, std::list<int>::iterator end)
+{
+    int sum = 0;
+
+    for (std::list<int>::iterator i = begin; i != end; i++)
+        sum += *i;
+
+    return sum;
+}
+
 double numbers_average(const std::list<int> &numbers)
 {
     return static_cast<double> (numbers_sum(numbers)) / numbers.size();
+}
+
+double numbers_average(std::list<int>::iterator begin, std::list<int>::iterator end)
+{
+    return static_cast<double> (numbers_sum(begin, end)) / std::distance(begin, end);
 }
 
 template<class T>
@@ -330,7 +321,22 @@ void display_get_numbers_from_file(std::wfstream &file, std::list<int> &numbers)
     different_file.close();
 }
 
-std::list<double> display_modify_range(std::list<int> &numbers, std::list<double>(*modify_function) (std::list<int> &, std::list<int>::iterator, std::list<int>::iterator))
+std::list<double> modify_no_range(std::list<int> &numbers, int algorithm_choice)
+{
+    switch (algorithm_choice)
+    {
+        case 1:
+            return modify(numbers);
+
+        case 2:
+            return modify_transform(numbers);
+
+        case 3:
+            return modify_for_each(numbers);
+    }
+}
+
+std::list<double> display_modify_range(std::list<int> &numbers, int algorithm_choice)
 {
     std::wcout << L"\n  Введите номер первого элемента от 1 до " << numbers.size() << L": ";
     int begin = input_number_in_range(1, numbers.size());
@@ -340,7 +346,17 @@ std::list<double> display_modify_range(std::list<int> &numbers, std::list<double
 
     std::list<int>::iterator begin_iterator = std::next(numbers.begin(), begin - 1), end_iterator = std::next(numbers.begin(), end);
 
-    return (*modify_function)(numbers, begin_iterator, end_iterator);
+    switch (algorithm_choice)
+    {
+        case 1:
+            return modify(begin_iterator, end_iterator);
+
+        case 2:
+            return modify_transform(begin_iterator, end_iterator);
+
+        case 3:
+            return modify_for_each(begin_iterator, end_iterator);
+    }
 }
 
 std::list<double> display_modify(std::list<int> &numbers)
@@ -348,34 +364,14 @@ std::list<double> display_modify(std::list<int> &numbers)
     std::wcout << L"\n  Какой алгоритм Вы хотите использовать?\n> цикл\n  std::transform\n  std::for_each\n";
     int algorithm_choice = Menu::menu(3);
 
-    std::wcout << L"\n  Хотите ли Вы задать промежуток для обработки?\n> задать промежуток\n  обработать весь список\n";
+    std::wcout << L"\n  Хотите ли Вы задать промежуток для обработки?\n> обработать весь список\n  задать промежуток\n";
     switch (Menu::menu(2))
     {
         case 1:
-            switch (algorithm_choice)
-            {
-                case 1:
-                    return display_modify_range(numbers, modify);
-
-                case 2:
-                    return display_modify_range(numbers, modify_transform);
-
-                case 3:
-                    return display_modify_range(numbers, modify_for_each);
-            }
+            return modify_no_range(numbers, algorithm_choice);
 
         case 2:
-            switch (algorithm_choice)
-            {
-                case 1:
-                    return modify(numbers);
-
-                case 2:
-                    return modify_transform(numbers);
-
-                case 3:
-                    return modify_for_each(numbers);
-            }
+            return display_modify_range(numbers, algorithm_choice);
     }
 }
 
