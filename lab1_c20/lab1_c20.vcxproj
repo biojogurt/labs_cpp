@@ -147,12 +147,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FileOperations.cpp" />
     <ClCompile Include="lab1_c20.cpp" />
-    <ClCompile Include="menu.cpp" />
+    <ClCompile Include="ListOperations.cpp" />
+    <ClCompile Include="MenuOperations.cpp" />
+    <ClCompile Include="NumberOperations.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="lab1_c20.h" />
-    <ClInclude Include="menu.h" />
+    <ClInclude Include="FileOperations.h" />
+    <ClInclude Include="ListOperations.h" />
+    <ClInclude Include="MenuOperations.h" />
+    <ClInclude Include="NumberOperations.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
