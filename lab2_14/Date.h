@@ -16,6 +16,7 @@ public:
     static bool check_day(int, int, int);
     static bool check_month(int);
 
+    Date &operator=(const Date &);
     bool operator<(const Date &) const;
     bool operator>(const Date &) const;
     bool operator==(const Date &) const;

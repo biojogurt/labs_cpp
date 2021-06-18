@@ -20,6 +20,7 @@ private:
 public:
     int selective_check(const Bill &, const bool[6]) const;
 
+    Bill &operator=(const Bill &);
     bool operator<(const Bill &) const;
     bool operator>(const Bill &) const;
 

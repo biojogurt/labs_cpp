@@ -37,7 +37,7 @@ int Menu::choose_operation(int choices_amount)
                 case VK_RETURN:
                     if (keys[i].Event.KeyEvent.bKeyDown)
                     {
-                        std::wcout << L"\x1b[" + std::to_wstring(choices_amount + 1 - position) + L"B\x1b[?25h";
+                        std::wcout << L"\x1b[" + std::to_wstring(choices_amount + 1 - position) + L"B\x1b[?25h\n";
                         return position;
                     }
             }
@@ -45,7 +45,7 @@ int Menu::choose_operation(int choices_amount)
     }
 }
 
-bool Menu::is_number(std::wstring number)
+bool Menu::is_number(const std::wstring &number)
 {
     if (number == L"")
         return false;
@@ -119,7 +119,7 @@ void Menu::get_field(Bill &bill, int field)
     }
 }
 
-void Menu::display_get_bill_line(bool &first, std::wstring field_name)
+void Menu::display_get_bill_line(bool &first, const std::wstring &field_name)
 {
     if (!first)
         std::wcout << L"  ";
@@ -141,7 +141,7 @@ int Menu::display_get_bill(bool fields_done[6], int fields_num[6], int choice)
     for (int i = 0; i < 6; i++)
         fields_num[i] = i + 1;
 
-    std::wcout << L"\nВыберите критерии поиска:\n";
+    std::wcout << L"Выберите критерии поиска:\n";
 
     for (int i = 0; i < 6; i++)
         if (!fields_done[i])
@@ -185,27 +185,45 @@ Bill Menu::get_bill(bool fields_done[6])
         if (field == 6)
             return bill;
 
-        std::wcout << L"\nВведите значение: ";
+        std::wcout << L"Введите значение: ";
         get_field(bill, field);
+        std::wcout << L"\n";
         fields_done[field] = true;
     }
 }
 
-int Menu::choose_search_method(TemplateContainer<Bill> &cont)
+bool Menu::choose_search_method(const TemplateContainer<Bill> &cont, Bill &bill)
 {
     bool criteria[6];
     Bill template_bill = get_bill(criteria);
-    std::wcout << L"\nКакой поиск использовать?\n> линейный\n  бинарный\n";
+    std::wcout << L"Какой поиск использовать?\n> линейный\n  бинарный\n";
     return choose_operation(2) == 1
-        ? cont.find_linear([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); })
-        : cont.find_binary([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); });
+        ? cont.find_linear([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); }, bill)
+        : cont.find_binary([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); }, bill);
+}
+
+TemplateContainer<Bill> Menu::choose_search_method_all(const TemplateContainer<Bill> &cont)
+{
+    bool criteria[6];
+    Bill template_bill = get_bill(criteria);
+    std::wcout << L"Какой поиск использовать?\n> линейный\n  бинарный\n";
+    return choose_operation(2) == 1
+        ? cont.find_linear_all([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); })
+        : cont.find_binary_all([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); });
+}
+
+int Menu::index_linear_search(const TemplateContainer<Bill> &cont)
+{
+    bool criteria[6];
+    Bill template_bill = get_bill(criteria);
+    return cont.find_linear([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); });
 }
 
 void Menu::add_bill(TemplateContainer<Bill> &cont)
 {
     Bill new_element;
 
-    std::wcout << L"\nВведите название фирмы: ";
+    std::wcout << L"Введите название фирмы: ";
     get_field(new_element, 0);
 
     std::wcout << L"Введите вид работ: ";
@@ -229,9 +247,7 @@ void Menu::add_bill(TemplateContainer<Bill> &cont)
 
 void Menu::edit_bill(TemplateContainer<Bill> &cont)
 {
-    std::wcout << L"\n1. Найдем изменяемый счет.";
-    int index = choose_search_method(cont);
-    std::wcout << L"\n";
+    int index = index_linear_search(cont);
 
     if (index == -1)
     {
@@ -239,46 +255,50 @@ void Menu::edit_bill(TemplateContainer<Bill> &cont)
         return;
     }
 
-    std::wcout << L"Подходящий счет найден.\n";
+    std::wcout << L"Найден следующий счет:\n" << cont[index] << L"\n\nИзменить его?\n> да\n  нет\n";
+
+    if (choose_operation(2) == 2)
+        return;
 
     while (true)
     {
-        std::wcout << L"\n2. Выберите, что нужно изменить:\n> название фирмы\n  вид работ\n  единицу измерения\n  стоимость единицы выполненной работы\n  дату исполнения\n  объем работ\n  завершить\n";
+        std::wcout << L"Выберите, что нужно изменить:\n> название фирмы\n  вид работ\n  единицу измерения\n  стоимость единицы выполненной работы\n  дату исполнения\n  объем работ\n  завершить\n";
         int choice = choose_operation(7);
 
         if (choice == 7)
-        {
-            std::wcout << L"\n";
             return;
-        }
 
-        std::wcout << L"\nВведите значение: ";
+        std::wcout << L"Введите значение: ";
         get_field(cont[index], choice - 1);
+        std::wcout << L"\n";
     }
 }
 
 void Menu::remove_bill(TemplateContainer<Bill> &cont)
 {
-    int index = choose_search_method(cont);
-    std::wcout << L"\n";
+    int index = index_linear_search(cont);
 
     if (index == -1)
-        std::wcout << L"Такого счета нет.";
-    else
     {
-        cont.remove(index);
-        std::wcout << L"Подходящий счет найден и удален.";
+        std::wcout << L"Такого счета нет.\n\n";
+        return;
     }
 
-    std::wcout << L"\n\n";
+    std::wcout << L"Найден следующий счет:\n" << cont[index] << L"\n\nУдалить его?\n> да\n  нет\n";
+
+    if (choose_operation(2) == 1)
+    {
+        cont.remove(index);
+        std::wcout << L"Счет удален.\n\n";
+    }
 }
 
 void Menu::change_estimate_menu(TemplateContainer<Bill> &cont)
 {
     int choices = 2;
-    std::wcout << L"\n> добавить счет\n";
+    std::wcout << L"> добавить счет\n";
 
-    if (!cont.empty())
+    if (cont.size())
     {
         choices += 2;
         std::wcout << L"  изменить счет\n  удалить счет\n";
@@ -293,11 +313,8 @@ void Menu::change_estimate_menu(TemplateContainer<Bill> &cont)
             break;
 
         case 2:
-            if (cont.empty())
-            {
-                std::wcout << L"\n";
+            if (!cont.size())
                 return;
-            }
 
             edit_bill(cont);
             break;
@@ -305,15 +322,12 @@ void Menu::change_estimate_menu(TemplateContainer<Bill> &cont)
         case 3:
             remove_bill(cont);
             break;
-
-        case 4:
-            std::wcout << L"\n";
     }
 }
 
 std::wfstream Menu::get_file(std::ios::openmode mode)
 {
-    std::wcout << L"\nВведите название файла: ";
+    std::wcout << L"Введите название файла: ";
     std::wstring filename;
     std::getline(std::wcin, filename);
     std::wfstream file(filename, mode);
@@ -343,19 +357,17 @@ void Menu::get_estimate_from_file(TemplateContainer<Bill> &cont)
     file.close();
 }
 
-void Menu::print_estimate(TemplateContainer<Bill> &cont)
+void Menu::print_estimate(const TemplateContainer<Bill> &cont)
 {
-    std::wcout << L"\nКуда вывести?\n> в файл\n  на экран\n";
-    std::wfstream file;
-    int choice = choose_operation(2);
+    std::wcout << L"Куда вывести?\n> в файл\n  на экран\n";
 
-    if (choice == 2)
+    if (choose_operation(2) == 2)
     {
-        std::wcout << "\n" << cont << "\n";
+        std::wcout << cont << "\n";
         return;
     }
 
-    file = get_file(std::ios_base::out | std::ios_base::trunc);
+    std::wfstream file = get_file(std::ios_base::out | std::ios_base::trunc);
 
     if (!file)
         return;
@@ -365,32 +377,29 @@ void Menu::print_estimate(TemplateContainer<Bill> &cont)
     std::wcout << "\n";
 }
 
-void Menu::find_one(TemplateContainer<Bill> &cont)
+void Menu::find_one(const TemplateContainer<Bill> &cont)
 {
-    int index = choose_search_method(cont);
-    std::wcout << L"\n";
+    Bill bill;
 
-    if (index == -1)
+    if (!choose_search_method(cont, bill))
         std::wcout << L"Такого счета нет.";
     else
-        std::wcout << L"Подходящий счет найден.\n" << cont[index];
+        std::wcout << L"Подходящий счет найден.\n" << bill;
 
     std::wcout << L"\n\n";
 }
 
-void Menu::find_few(TemplateContainer<Bill> &cont)
+void Menu::find_all(const TemplateContainer<Bill> &cont)
 {
-    bool criteria[6];
-    Bill template_bill = get_bill(criteria);
-    TemplateContainer<Bill> found = cont.find_linear_all([template_bill, criteria](Bill bill) { return bill.selective_check(template_bill, criteria); });
-    std::wcout << "\n";
+    TemplateContainer<Bill> found = choose_search_method_all(cont);
 
-    if (found.empty())
-        std::wcout << L"Таких счетов нет.\n";
+    if (!found.size())
+        std::wcout << L"Таких счетов нет.\n\n";
     else
-        std::wcout << L"Подходящие счета найдены.\n" << found;
-
-    std::wcout << L"\n";
+    {
+        std::wcout << L"Подходящие счета найдены.\n\n";
+        print_estimate(found);
+    }
 }
 
 int Menu::display_main_menu(bool container_empty)
@@ -412,7 +421,7 @@ int Menu::display_main_menu(bool container_empty)
 
 bool Menu::main_menu(TemplateContainer<Bill> &cont)
 {
-    switch (choose_operation(display_main_menu(cont.empty())))
+    switch (choose_operation(display_main_menu(!cont.size())))
     {
         case 1:
             change_estimate_menu(cont);
@@ -423,7 +432,7 @@ bool Menu::main_menu(TemplateContainer<Bill> &cont)
             break;
 
         case 3:
-            if (cont.empty())
+            if (!cont.size())
                 return false;
 
             print_estimate(cont);
@@ -434,7 +443,7 @@ bool Menu::main_menu(TemplateContainer<Bill> &cont)
             break;
 
         case 5:
-            find_few(cont);
+            find_all(cont);
             break;
 
         case 6:
