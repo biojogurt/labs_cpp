@@ -12,21 +12,25 @@ private:
 public:
     typedef std::function<int(const T &)> check;
 
-    T &operator[](size_t i);
+    size_t size() const;
 
     void add(const T &);
-    bool remove(const T &);
     bool remove(int);
 
-    bool empty() const;
+    int find_linear(check) const;
+    bool find_linear(check, T &) const;
+    TemplateContainer<T> find_linear_all(check) const;
 
 private:
     void sort();
 
 public:
-    int find_linear(check) const;
-    TemplateContainer<T> find_linear_all(check) const;
-    int find_binary(check);
+    bool find_binary(check, T &) const;
+    TemplateContainer<T> find_binary_all(check) const;
+
+    TemplateContainer<T> &operator=(const TemplateContainer<T> &);
+    T &operator[](size_t i);
+    const T &operator[](size_t i) const;
 
     template <class T>
     friend std::wistream &operator>>(std::wistream &, TemplateContainer<T> &);
@@ -34,22 +38,16 @@ public:
     friend std::wostream &operator<<(std::wostream &, const TemplateContainer<T> &);
 };
 
+template<class T>
+size_t TemplateContainer<T>::size() const
+{
+    return container.size();
+}
+
 template <class T>
 void TemplateContainer<T>::add(const T &element)
 {
     container.emplace_back(element);
-}
-
-template <class T>
-bool TemplateContainer<T>::remove(const T &element)
-{
-    int pos = find_binary(element);
-
-    if (pos == -1)
-        return false;
-
-    container.erase(container.begin() + pos);
-    return true;
 }
 
 template <class T>
@@ -62,17 +60,39 @@ bool TemplateContainer<T>::remove(int pos)
     return true;
 }
 
-
-template<class T>
-bool TemplateContainer<T>::empty() const
+template <class T>
+int TemplateContainer<T>::find_linear(check checker) const
 {
-    return container.size() == 0;
+    for (int i = 0; i < container.size(); i++)
+        if (checker(container[i]) == 0)
+            return i;
+
+    return -1;
+}
+
+template <class T>
+bool TemplateContainer<T>::find_linear(check checker, T &found) const
+{
+    for (int i = 0; i < container.size(); i++)
+        if (checker(container[i]) == 0)
+        {
+            found = container[i];
+            return true;
+        }
+
+    return false;
 }
 
 template<class T>
-T &TemplateContainer<T>::operator[](std::size_t i)
+TemplateContainer<T> TemplateContainer<T>::find_linear_all(check checker) const
 {
-    return container[i];
+    TemplateContainer<T> found;
+
+    for (int i = 0; i < container.size(); i++)
+        if (checker(container[i]) == 0)
+            found.add(container[i]);
+
+    return found;
 }
 
 template<class T>
@@ -81,9 +101,7 @@ void TemplateContainer<T>::sort()
     for (int i = 1; i < container.size(); i++)
     {
         T key = container[i];
-        int low = 0,
-            high = static_cast<int>(container.size()),
-            mid = (low + high) / 2;
+        int low = 0, high = static_cast<int>(container.size()), mid = (low + high) / 2;
 
         while (low != high)
         {
@@ -103,38 +121,16 @@ void TemplateContainer<T>::sort()
 }
 
 template <class T>
-int TemplateContainer<T>::find_linear(check checker) const
+bool TemplateContainer<T>::find_binary(check checker, T &found) const
 {
-    for (int i = 0; i < container.size(); i++)
-        if (checker(container[i]) == 0)
-            return i;
+    TemplateContainer<T> sorted = *this;
+    sorted.sort();
 
-    return -1;
-}
+    int low = 0, high = static_cast<int>(sorted.size()), mid = (low + high) / 2;
 
-template<class T>
-TemplateContainer<T> TemplateContainer<T>::find_linear_all(check checker) const
-{
-    TemplateContainer<T> found;
-
-    for (int i = 0; i < container.size(); i++)
-        if (checker(container[i]) == 0)
-            found.add(container[i]);
-
-    return found;
-}
-
-template <class T>
-int TemplateContainer<T>::find_binary(check checker)
-{
-    sort();
-    int low = 0,
-        high = static_cast<int>(container.size()),
-        mid = (low + high) / 2;
-
-    while (mid != high && checker(container[mid]) != 0)
+    while (mid != high && checker(sorted[mid]) != 0)
     {
-        if (checker(container[mid]) < 0)
+        if (checker(sorted[mid]) < 0)
             low = mid + 1;
         else
             high = mid;
@@ -142,13 +138,85 @@ int TemplateContainer<T>::find_binary(check checker)
         mid = (low + high) / 2;
     }
 
-    return mid != high ? mid : -1;
+    if (mid == high)
+        return false;
+    else
+    {
+        found = sorted[mid];
+        return true;
+    }
+}
+
+template<class T>
+TemplateContainer<T> TemplateContainer<T>::find_binary_all(check checker) const
+{
+    TemplateContainer<T> sorted = *this;
+    sorted.sort();
+
+    int low = 0, high = static_cast<int>(sorted.size()), mid = (low + high) / 2;
+
+    while (low != high)
+    {
+        if (checker(sorted[mid]) < 0)
+            low = mid + 1;
+        else
+            high = mid;
+
+        mid = (low + high) / 2;
+    }
+
+    int lower_bound = mid;
+    low = 0, high = static_cast<int>(sorted.size()), mid = (low + high) / 2;
+
+    while (low != high)
+    {
+        if (checker(sorted[mid]) <= 0)
+            low = mid + 1;
+        else
+            high = mid;
+
+        mid = (low + high) / 2;
+    }
+
+    int upper_bound = mid;
+    TemplateContainer<T> found;
+
+    for (int i = lower_bound; i < upper_bound; i++)
+        found.add(sorted[i]);
+
+    return found;
+}
+
+template<class T>
+TemplateContainer<T> &TemplateContainer<T>::operator=(const TemplateContainer<T> &other)
+{
+    if (this == &other)
+        return *this;
+
+    container = std::vector<T>(other.size());
+
+    for (int i = 0; i < other.size(); i++)
+        container[i] = other[i];
+
+    return *this;
+}
+
+template<class T>
+T &TemplateContainer<T>::operator[](std::size_t i)
+{
+    return container[i];
+}
+
+template<class T>
+const T &TemplateContainer<T>::operator[](size_t i) const
+{
+    return container[i];
 }
 
 template <class T>
 std::wistream &operator>>(std::wistream &is, TemplateContainer<T> &cont)
 {
-    T element{};
+    T element;
 
     if (is >> element)
         cont.add(element);

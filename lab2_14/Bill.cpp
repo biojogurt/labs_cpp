@@ -56,6 +56,20 @@ int Bill::selective_check(const Bill &other, const bool criteria[6]) const
     return criteria[5] ? selective_check_one(work_amount, other.work_amount) : 0;
 }
 
+Bill &Bill::operator=(const Bill &other)
+{
+    if (this == &other)
+        return *this;
+
+    firm_name = other.firm_name;
+    work_type = other.work_type;
+    unit = other.unit;
+    work_cost = other.work_cost;
+    completion_date = other.completion_date;
+    work_amount = other.work_amount;
+    return *this;
+}
+
 bool Bill::operator<(const Bill &other) const
 {
     return firm_name < other.firm_name
